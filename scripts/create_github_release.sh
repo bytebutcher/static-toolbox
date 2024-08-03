@@ -17,6 +17,9 @@ if [ -z "${GITHUB_TOKEN:-}" ]; then
     exit 1
 fi
 
+# Fetch tags
+git fetch --tags
+
 # Get the latest tag
 LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
 
@@ -26,14 +29,6 @@ MAJOR="${VERSION_PARTS[0]}"
 MINOR="${VERSION_PARTS[1]}"
 PATCH=$((VERSION_PARTS[2] + 1))
 NEW_TAG="v$MAJOR.$MINOR.$PATCH"
-
-# Check if the new tag already exists
-while git rev-parse $NEW_TAG >/dev/null 2>&1; do
-    # If it exists, increment the patch version again
-    PATCH=$((PATCH + 1))
-    NEW_TAG="v$MAJOR.$MINOR.$PATCH"
-done
-
 
 # Create a new tag
 git config user.name "GitHub Actions"
