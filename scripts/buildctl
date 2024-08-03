@@ -1,0 +1,130 @@
+#!/bin/bash
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+TOOLS_DIR="$PROJECT_ROOT/tools"
+
+# Function to show usage
+show_usage() {
+    cat << EOF
+Usage: $(basename "$0") <command> [<args>]
+
+Commands:
+  -l, --list                     List all tools and their status
+  -t, --toggle <tool>            Toggle build status
+  -b, --build <tool>             Build a single tool
+  -r, --release                  Create a GitHub release
+  -B, --build-all                Discover and build all tools
+  -h, --help                     Show this help message
+
+Examples:
+  $(basename "$0") --list
+  $(basename "$0") --toggle mytool
+  $(basename "$0") --build mytool
+  $(basename "$0") --build-all
+
+EOF
+}
+
+# Function to list all tools and their build ignore status
+list_tools() {
+    local format="%-20s %-10s %s\n"
+    printf "$format" "TOOL NAME" "STATUS" "VERSION"
+    printf "$format" "---------" "------" "-------"
+    for tool in "$TOOLS_DIR"/*; do
+        if [ -d "$tool" ]; then
+            local tool_name=$(basename "$tool")
+            local tool_status=$([[ -f "$tool/.buildignore" ]] && echo "IGNORED" || echo "ACTIVE")
+            local version=$(readlink -f "$tool/latest" 2>/dev/null | xargs -r basename || echo "N/A")
+            printf "$format" "$tool_name" "$tool_status" "$version"
+        fi
+    done
+}
+
+# Function to disable a tool (create .buildignore)
+disable_tool() {
+    local tool="$1"
+    if [ -d "$TOOLS_DIR/$tool" ]; then
+        touch "$TOOLS_DIR/$tool/.buildignore"
+        echo "Disabled $tool"
+    else
+        echo "Tool $tool not found"
+    fi
+}
+
+# Function to enable a tool (remove .buildignore)
+enable_tool() {
+    local tool="$1"
+    if [ -d "$TOOLS_DIR/$tool" ]; then
+        rm -f "$TOOLS_DIR/$tool/.buildignore"
+        echo "Enabled $tool"
+    else
+        echo "Tool $tool not found"
+    fi
+}
+
+# Function to toggle a tool's status
+toggle_tool() {
+    local tool="$1"
+    if [ -d "$TOOLS_DIR/$tool" ]; then
+        if [ -f "$TOOLS_DIR/$tool/.buildignore" ]; then
+            enable_tool "$tool"
+        else
+            disable_tool "$tool"
+        fi
+    else
+        echo "Tool $tool not found"
+    fi
+}
+
+# Function to build a single tool
+build_single_tool() {
+    "$SCRIPT_DIR/build_tool.sh" "$1" "$PROJECT_ROOT/build_output"
+}
+
+# Function to create a GitHub release
+create_github_release() {
+    "$SCRIPT_DIR/create_github_release.sh"
+}
+
+# Function to discover and build all tools
+discover_and_build_tools() {
+    "$SCRIPT_DIR/discover_and_build_tools.sh"
+}
+
+# Main script logic
+case "$1" in
+    -l | --list)
+        list_tools
+        ;;
+    -t | --toggle)
+        if [ -z "$2" ]; then
+            echo "Usage: $0 toggle <tool>"
+            exit 1
+        fi
+        toggle_tool "$2"
+        ;;
+    -b | --build)
+        if [ -z "$2" ]; then
+            echo "Usage: $0 build <tool>"
+            exit 1
+        fi
+        build_single_tool "$2"
+        ;;
+    -r | --release)
+        create_github_release
+        ;;
+    -B | --build-all)
+        discover_and_build_tools
+        ;;
+    -h | --help)
+        show usage
+        ;;
+    *)
+        if [ -n "$1" ] ; then
+            echo "Error: Unknown command '$1'"
+        fi
+        show_usage
+        exit 1
+        ;;
+esac

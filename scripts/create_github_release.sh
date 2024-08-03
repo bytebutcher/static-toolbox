@@ -11,24 +11,41 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 # Directory containing the built binaries
 BUILD_OUTPUT_DIR="$PROJECT_ROOT/build_output"
 
+# Function to increment version
+increment_version() {
+    local version=$1
+    local major minor patch
+
+    # Remove 'v' prefix if present
+    version="${version#v}"
+
+    IFS='.' read -r major minor patch <<< "$version"
+    
+    # Increment patch version
+    patch=$((patch + 1))
+    
+    echo "v$major.$minor.$patch"
+}
+
 # Ensure we have a GitHub token
 if [ -z "${GITHUB_TOKEN:-}" ]; then
     echo "Error: GITHUB_TOKEN is not set"
     exit 1
 fi
 
-# Fetch tags
-git pull
-
 # Get the latest tag
 LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
 
-# Increment the patch version
-IFS='.' read -ra VERSION_PARTS <<< "${LATEST_TAG#v}"
-MAJOR="${VERSION_PARTS[0]}"
-MINOR="${VERSION_PARTS[1]}"
-PATCH=$((VERSION_PARTS[2] + 1))
-NEW_TAG="v$MAJOR.$MINOR.$PATCH"
+# Generate new tag
+NEW_TAG=$(increment_version "$LATEST_TAG")
+
+# Check if the new tag already exists, and keep incrementing if it does
+while git rev-parse "$NEW_TAG" >/dev/null 2>&1; do
+    echo "Tag $NEW_TAG already exists, incrementing..."
+    NEW_TAG=$(increment_version "$NEW_TAG")
+done
+
+echo "Creating new tag: $NEW_TAG"
 
 # Create a new tag
 git config user.name "GitHub Actions"

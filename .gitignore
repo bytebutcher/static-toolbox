@@ -2,4 +2,3 @@ build_output/
 tools/*/versions/*/src/*
 !tools/*/versions/*/src/.gitkeep
 *.swp
-.buildignore
