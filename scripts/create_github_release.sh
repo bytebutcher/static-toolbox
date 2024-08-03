@@ -33,8 +33,16 @@ if [ -z "${GITHUB_TOKEN:-}" ]; then
     exit 1
 fi
 
-# Get the latest tag
+
+
+echo "Fetching latest tags..."
+git fetch --tags --force
+
+echo "Listing all tags:"
+git tag -l
+
 LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+echo "Latest tag: $LATEST_TAG"
 
 # Generate new tag
 NEW_TAG=$(increment_version "$LATEST_TAG")
