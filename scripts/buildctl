@@ -10,20 +10,57 @@ show_usage() {
 Usage: $(basename "$0") <command> [<args>]
 
 Commands:
-  -l, --list                     List all tools and their status
-  -t, --toggle <tool>            Toggle build status
-  -b, --build <tool>             Build a single tool
-  -r, --release                  Create a GitHub release
-  -B, --build-all                Discover and build all tools
-  -h, --help                     Show this help message
+
+  -b, --build <tool>               Build a single tool
+  -B, --build-all                  Discover and build all tools
+  -l, --list                       List all tools and their status
+  -n, --new-tool <tool> <version>  Add a new tool version
+  -r, --release                    Create a GitHub release
+  -t, --toggle <tool>              Toggle build status
+  -h, --help                       Show this help message
 
 Examples:
-  $(basename "$0") --list
-  $(basename "$0") --toggle mytool
-  $(basename "$0") --build mytool
-  $(basename "$0") --build-all
+  $(basename "$0") new mytool 1.0.0
+  $(basename "$0") ls
+  $(basename "$0") toggle mytool
+  $(basename "$0") build mytool
+  $(basename "$0") build-all
 
 EOF
+}
+
+# Function to add a new tool with a specific version
+new_tool() {
+    local tool="$1"
+    local version="$2"
+    
+    if [ -z "$tool" ] || [ -z "$version" ]; then
+        echo "Usage: $0 --create-tool <tool> <version>"
+        exit 1
+    fi
+    
+    local tool_dir="$TOOLS_DIR/$tool"
+    local version_dir="$tool_dir/versions/$version"
+    
+    # Create directory and check latest version
+    mkdir -p "$version_dir"
+    cd "$tool_dir"
+    if [ -L "latest" ]; then
+        local current_latest=$(readlink latest)
+        echo "Updating 'latest' from $current_latest to $version"
+        rm latest
+    else
+        echo "Error: 'latest' exists in $tool_dir but is not a symlink. Please check and remove manually."
+        exit 1
+    fi
+    # Create symlink
+    ln -sf "versions/$version" latest
+    
+    # Create Dockerfile
+    touch "$version_dir/Dockerfile"
+    
+    echo "Created tool $tool with version $version"
+    echo "Dockerfile created at $version_dir/Dockerfile"
 }
 
 # Function to list all tools and their build ignore status
@@ -94,30 +131,37 @@ discover_and_build_tools() {
 
 # Main script logic
 case "$1" in
-    -l | --list)
+    new | -n | --new-tool)
+        if [ -z "$2" ] || [ -z "$3" ]; then
+            echo "Usage: $0 --new-tool <tool> <version>"
+            exit 1
+        fi
+        new_tool "$2" "$3"
+        ;;
+    ls | list | -l | --list)
         list_tools
         ;;
-    -t | --toggle)
+    tgl | toggle | -t | --toggle)
         if [ -z "$2" ]; then
             echo "Usage: $0 toggle <tool>"
             exit 1
         fi
         toggle_tool "$2"
         ;;
-    -b | --build)
+    build | -b | --build)
         if [ -z "$2" ]; then
             echo "Usage: $0 build <tool>"
             exit 1
         fi
         build_single_tool "$2"
         ;;
-    -r | --release)
+    release | -r | --release)
         create_github_release
         ;;
-    -B | --build-all)
+    build-all | -B | --build-all)
         discover_and_build_tools
         ;;
-    -h | --help)
+    help | -h | --help)
         show usage
         ;;
     *)
