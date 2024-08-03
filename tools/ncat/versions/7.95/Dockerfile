@@ -19,7 +19,7 @@ RUN /build.sh build_nmap
 
 # Create a minimal runtime image
 FROM scratch
-COPY --from=builder /output/ncat /output/ncat
+COPY --from=builder /output/ncat /ncat
 
 # Update entrypoint
-ENTRYPOINT ["/bin/sh"]
+ENTRYPOINT ["/ncat"]

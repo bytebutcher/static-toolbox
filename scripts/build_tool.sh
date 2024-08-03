@@ -40,7 +40,7 @@ cd "$LATEST_VERSION_DIR" || exit 1
 docker build -t "$TOOL_NAME:$VERSION" .
 
 CONTAINER_ID=$(docker create "$TOOL_NAME:$VERSION")
-docker cp "$CONTAINER_ID:/output/$TOOL_NAME" "$OUTPUT_DIR/${TOOL_NAME}_${VERSION}"
+docker cp "$CONTAINER_ID:/$TOOL_NAME" "$OUTPUT_DIR/${TOOL_NAME}_${VERSION}"
 #docker cp "$CONTAINER_ID:/output/packages.lock" "$TOOL_DIR/versions/$VERSION/packages.lock"
 docker rm "$CONTAINER_ID"
 
