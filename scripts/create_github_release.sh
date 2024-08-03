@@ -18,7 +18,7 @@ if [ -z "${GITHUB_TOKEN:-}" ]; then
 fi
 
 # Fetch tags
-git fetch --tags
+git pull
 
 # Get the latest tag
 LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
