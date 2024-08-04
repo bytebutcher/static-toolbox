@@ -2,7 +2,7 @@
 # Include constants
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${SCRIPT_DIR}/../helper/command_env.sh"
-source "${SCRIPT_DIR}/../helper/release_helper.sh"
+source "${SCRIPT_DIR}/../helper/release_utils.sh"
 
 # Set custom constants
 IGNORE_FILE=".buildignore"
@@ -72,7 +72,7 @@ build_tool() {
         ((SKIPPED_BUILDS++))
         return 0
     fi
-
+    return 1
     (
         echo "Building ${tool_name} version ${tool_latest_version}"
         cd "${tool_latest_dir}" || return 1

@@ -2,7 +2,7 @@
 # Include constants
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${SCRIPT_DIR}/../helper/command_env.sh"
-source "${SCRIPT_DIR}/../helper/release_helper.sh"
+source "${SCRIPT_DIR}/../helper/release_utils.sh"
 
 # Function to release a single tool
 release_tool() {
