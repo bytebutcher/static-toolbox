@@ -19,7 +19,7 @@ release_tool() {
     local tag="${tool_name}-${version}"
 
     # Check if the release already exists
-    if release_exists "${tag}"; then
+    if release_exists "${tool_name}" "${tool_latest_version}"; then
         echo "Release ${tag} already exists. Skipping."
         return 0
     fi

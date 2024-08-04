@@ -72,7 +72,7 @@ build_tool() {
         ((SKIPPED_BUILDS++))
         return 0
     fi
-    return 1
+
     (
         echo "Building ${tool_name} version ${tool_latest_version}"
         cd "${tool_latest_dir}" || return 1
