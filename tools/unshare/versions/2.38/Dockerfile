@@ -9,10 +9,13 @@ ARG UTIL_LINUX_VERSION
 
 # Install necessary build dependencies
 RUN apk add --no-cache \
+    bison \
     build-base \
     linux-headers \
     autoconf \
     automake \
+    gettext \
+    gettext-dev \
     libtool \
     pkgconfig \
     xz \
@@ -27,8 +30,9 @@ RUN curl -LO https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v${UTIL_
 
 # Build unshare statically
 RUN cd util-linux-${UTIL_LINUX_VERSION} \
-    && ./configure LDFLAGS="-static" --disable-shared --without-python --disable-all-programs --enable-unshare \
-    && make \
+    && ./autogen.sh \
+    && CFLAGS="--static" LDFLAGS="--static" ./configure --disable-shared --enable-static \
+    && make SHARED=0 CC='gcc --static' \
     && strip ./unshare
 
 # Create a minimal runtime image
@@ -38,7 +42,7 @@ FROM scratch
 ARG UTIL_LINUX_VERSION
 
 # Copy the built 'unshare' binary from the builder stage
-COPY --from=builder /opt/util-linux-${UTIL_LINUX_VERSION}/unshare /unshare
+COPY --from=builder /opt/util-linux-${UTIL_LINUX_VERSION}/unshare /output/unshare
 
 # Set entrypoint
-ENTRYPOINT ["/unshare"]
+ENTRYPOINT ["/output/unshare"]

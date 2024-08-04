@@ -36,7 +36,7 @@ FROM scratch
 ARG JQ_VERSION
 
 # Copy the built 'jq' binary from the builder stage
-COPY --from=builder /opt/jq-${JQ_VERSION}/jq /jq
+COPY --from=builder /opt/jq-${JQ_VERSION}/jq /output/jq
 
 # Set entrypoint
-ENTRYPOINT ["/jq"]
+ENTRYPOINT ["/output/jq"]

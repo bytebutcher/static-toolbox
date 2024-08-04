@@ -1,8 +1,12 @@
 #!/bin/bash
-
+# Set constants
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-TOOLS_DIR="$PROJECT_ROOT/tools"
+
+# Global arguments
+ARGS=()
+ARG_VERBOSE=false
 
 # Function to show usage
 show_usage() {
@@ -11,158 +15,76 @@ Usage: $(basename "$0") <command> [<args>]
 
 Commands:
 
-  -b, --build <tool>               Build a single tool
-  -B, --build-all                  Discover and build all tools
+  -b, --build [tool...]            Build all or a set of tools
+  -c, --check [tool...]            Check whether there are updates available
   -l, --list                       List all tools and their status
-  -n, --new-tool <tool> <version>  Add a new tool version
+  -n, --new <tool> <version>       Add a new tool version
   -r, --release                    Create a GitHub release
   -t, --toggle <tool>              Toggle build status
+  -u, --update [tool...]           Update all or a set of tools to the latest version
   -h, --help                       Show this help message
 
 Examples:
   $(basename "$0") new mytool 1.0.0
   $(basename "$0") ls
   $(basename "$0") toggle mytool
+  $(basename "$0") build
   $(basename "$0") build mytool
-  $(basename "$0") build-all
 
 EOF
 }
 
-# Function to add a new tool with a specific version
-new_tool() {
-    local tool="$1"
-    local version="$2"
-    
-    if [ -z "$tool" ] || [ -z "$version" ]; then
-        echo "Usage: $0 --create-tool <tool> <version>"
-        exit 1
-    fi
-    
-    local tool_dir="$TOOLS_DIR/$tool"
-    local version_dir="$tool_dir/versions/$version"
-    
-    # Create directory and check latest version
-    mkdir -p "$version_dir"
-    cd "$tool_dir"
-    if [ -L "latest" ]; then
-        local current_latest=$(readlink latest)
-        echo "Updating 'latest' from $current_latest to $version"
-        rm latest
-    else
-        echo "Error: 'latest' exists in $tool_dir but is not a symlink. Please check and remove manually."
-        exit 1
-    fi
-    # Create symlink
-    ln -sf "versions/$version" latest
-    
-    # Create Dockerfile
-    touch "$version_dir/Dockerfile"
-    
-    echo "Created tool $tool with version $version"
-    echo "Dockerfile created at $version_dir/Dockerfile"
-}
-
-# Function to list all tools and their build ignore status
-list_tools() {
-    local format="%-20s %-10s %s\n"
-    printf "$format" "TOOL NAME" "STATUS" "VERSION"
-    printf "$format" "---------" "------" "-------"
-    for tool in "$TOOLS_DIR"/*; do
-        if [ -d "$tool" ]; then
-            local tool_name=$(basename "$tool")
-            local tool_status=$([[ -f "$tool/.buildignore" ]] && echo "IGNORED" || echo "ACTIVE")
-            local version=$(readlink -f "$tool/latest" 2>/dev/null | xargs -r basename || echo "N/A")
-            printf "$format" "$tool_name" "$tool_status" "$version"
-        fi
+# Function to process arguments
+preprocess_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -v|--verbose|verbose)
+                ARG_VERBOSE=true
+                ;;
+            *)
+                ARGS+=("$1")
+                ;;
+        esac
+        shift
     done
 }
 
-# Function to disable a tool (create .buildignore)
-disable_tool() {
-    local tool="$1"
-    if [ -d "$TOOLS_DIR/$tool" ]; then
-        touch "$TOOLS_DIR/$tool/.buildignore"
-        echo "Disabled $tool"
-    else
-        echo "Tool $tool not found"
-    fi
-}
-
-# Function to enable a tool (remove .buildignore)
-enable_tool() {
-    local tool="$1"
-    if [ -d "$TOOLS_DIR/$tool" ]; then
-        rm -f "$TOOLS_DIR/$tool/.buildignore"
-        echo "Enabled $tool"
-    else
-        echo "Tool $tool not found"
-    fi
-}
-
-# Function to toggle a tool's status
-toggle_tool() {
-    local tool="$1"
-    if [ -d "$TOOLS_DIR/$tool" ]; then
-        if [ -f "$TOOLS_DIR/$tool/.buildignore" ]; then
-            enable_tool "$tool"
-        else
-            disable_tool "$tool"
-        fi
-    else
-        echo "Tool $tool not found"
-    fi
-}
-
-# Function to build a single tool
-build_single_tool() {
-    "$SCRIPT_DIR/build_tool.sh" "$1" "$PROJECT_ROOT/build_output"
-}
-
-# Function to create a GitHub release
-create_github_release() {
-    "$SCRIPT_DIR/create_github_release.sh"
-}
-
-# Function to discover and build all tools
-discover_and_build_tools() {
-    "$SCRIPT_DIR/discover_and_build_tools.sh"
-}
+# Preprocess the arguments
+preprocess_args "$@"
+set -- "${ARGS[@]}"
 
 # Main script logic
 case "$1" in
-    new | -n | --new-tool)
-        if [ -z "$2" ] || [ -z "$3" ]; then
-            echo "Usage: $0 --new-tool <tool> <version>"
-            exit 1
-        fi
-        new_tool "$2" "$3"
+    build | -b | --build)
+        shift
+        "$SCRIPT_DIR/commands/build.sh" "${@}"
+        ;;
+    check | -c | --check)
+        shift
+        "$SCRIPT_DIR/commands/check.sh" "${@}"
+        ;;
+    debug | -d | --debug)
+        "$SCRIPT_DIR/commands/debug.sh" "${ARG_VERBOSE}"
         ;;
     ls | list | -l | --list)
-        list_tools
+        "$SCRIPT_DIR/commands/list.sh" "$2" "${ARG_VERBOSE}"
+        ;;
+    new | -n | --new)
+       "$SCRIPT_DIR/commands/new.sh" "$2" "$3"
+       ;;
+    release | -r | --release)
+        shift
+        "$SCRIPT_DIR/commands/release.sh" "${@}"
         ;;
     tgl | toggle | -t | --toggle)
-        if [ -z "$2" ]; then
-            echo "Usage: $0 toggle <tool>"
-            exit 1
-        fi
-        toggle_tool "$2"
+        "$SCRIPT_DIR/commands/toggle.sh" "$2"
         ;;
-    build | -b | --build)
-        if [ -z "$2" ]; then
-            echo "Usage: $0 build <tool>"
-            exit 1
-        fi
-        build_single_tool "$2"
-        ;;
-    release | -r | --release)
-        create_github_release
-        ;;
-    build-all | -B | --build-all)
-        discover_and_build_tools
+    update | -u | --update)
+        shift
+        "$SCRIPT_DIR/commands/update.sh" "${@}"
         ;;
     help | -h | --help)
-        show usage
+        show_usage
         ;;
     *)
         if [ -n "$1" ] ; then

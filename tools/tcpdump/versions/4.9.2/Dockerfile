@@ -33,7 +33,7 @@ RUN strip /output/tcpdump
 
 # Create a minimal runtime image
 FROM scratch
-COPY --from=builder /output/tcpdump /tcpdump
+COPY --from=builder /output/tcpdump /output/tcpdump
 
 # Set entrypoint
-ENTRYPOINT ["/tcpdump"]
+ENTRYPOINT ["/output/tcpdump"]

@@ -28,8 +28,8 @@ RUN wget https://gitlab.com/procps-ng/procps/-/archive/v${PROCPS_VERSION}/procps
 # Build procps-ng statically
 RUN cd procps-v${PROCPS_VERSION} \
     && ./autogen.sh \
-    && CFLAGS="-static" LDFLAGS="-static" ./configure --disable-shared --enable-static \
-    && make SHARED=0 CC='gcc -static'
+    && CFLAGS="--static" LDFLAGS="--static" ./configure --disable-shared --enable-static \
+    && make SHARED=0 CC='gcc --static'
 
 # Copy the built 'ps' binary to /output (if it exists)
 RUN mkdir -p /output && cp /opt/procps-v${PROCPS_VERSION}/src/ps/pscommand /output/ps
@@ -39,7 +39,7 @@ RUN strip /output/ps
 
 # Create a minimal runtime image
 FROM scratch
-COPY --from=builder /output/ps /ps
+COPY --from=builder /output/ps /output/ps
 
 # Set entrypoint
-ENTRYPOINT ["/ps"]
+ENTRYPOINT ["/output/ps"]

@@ -16,13 +16,13 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y jq
 
-    - name: Discover and build tools
+    - name: Build tools
       run: |
-        bash ./scripts/discover_and_build_tools.sh
+        bash ./scripts/buildctl build
 
     - name: Create GitHub Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        bash ./scripts/create_github_release.sh
+        bash ./scripts/buildctl release
