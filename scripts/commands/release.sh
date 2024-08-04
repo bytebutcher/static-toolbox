@@ -32,7 +32,7 @@ release_tool() {
         return 1
     fi
 
-    local tag="${tool_name}:${version}"
+    local tag="${tool_name}-${version}"
 
     # Check if the release already exists
     if release_exists "$tag"; then
@@ -42,11 +42,13 @@ release_tool() {
 
     echo "Creating release for $tag"
 
-    # Create a new tag
+    # Create a new tag (if it does not already exist)
     git config user.name "GitHub Actions"
     git config user.email "actions@github.com"
-    git tag -a "$tag" -m "Release $tag"
-    git push origin "$tag"
+    if ! git rev-parse "$tag" >/dev/null 2>&1; then
+        git tag -a "$tag" -m "Release $tag"
+        git push origin "$tag"
+    fi
 
     # Create GitHub release
     local release_notes="Automated release of $tool_name version $version"
@@ -108,7 +110,7 @@ release_tools() {
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    if [ -z "$1" ] || [ "$1" = "-h" ]; then
+    if [ "$1" = "-h" ]; then
         echo "Usage: ${SCRIPT_NAME} release [tool...]"
         exit 1
     fi
