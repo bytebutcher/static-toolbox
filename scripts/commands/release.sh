@@ -1,24 +1,8 @@
 #!/bin/bash
-# Set constants
-SCRIPT="${BASH_SOURCE[0]}"
-SCRIPT_NAME="buildctl"
-SCRIPT_DIR="$( cd "$( dirname "${SCRIPT}" )" && pwd )"
-PROJECT_ROOT="$(cd "$(dirname "$(readlink -f "${SCRIPT}")")/../.." && pwd)"
-TOOLS_DIR="$PROJECT_ROOT/tools"
-BUILD_OUTPUT_DIR="$PROJECT_ROOT/build_output"
-
-# Function to check if a release already exists
-release_exists() {
-    local tag="$1"
-    local response=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
-        "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${tag}")
-
-    if [[ $(echo "${response}" | jq -r '.message') != "Not Found" ]]; then
-        return 0  # Release exists
-    else
-        return 1  # Release does not exist
-    fi
-}
+# Include constants
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SCRIPT_DIR}/../helper/command_env.sh"
+source "${SCRIPT_DIR}/../helper/release_helper.sh"
 
 # Function to release a single tool
 release_tool() {

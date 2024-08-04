@@ -1,13 +1,10 @@
 #!/bin/bash
-# Set constants
-SCRIPT="${BASH_SOURCE[0]}"
-SCRIPT_NAME="buildctl"
-SCRIPT_DIR="$( cd "$( dirname "${SCRIPT}" )" && pwd )"
-PROJECT_ROOT="$(cd "$(dirname "$(readlink -f "${SCRIPT}")")/../.." && pwd)"
-TOOLS_DIR="$PROJECT_ROOT/tools"
-BUILD_OUTPUT_DIR="$PROJECT_ROOT/build_output"
+# Include constants
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SCRIPT_DIR}/../helper/command_env.sh"
+source "${SCRIPT_DIR}/../helper/release_helper.sh"
 
-# Set constants
+# Set custom constants
 IGNORE_FILE=".buildignore"
 
 # Build progress
@@ -35,11 +32,13 @@ build_tool() {
     # Initialise Tool Version
     TOOL_VERSIONS["${tool_name}"]="N/A"
 
+    # Check of tool directory exists
     if [[ ! -d "${tool_dir}" ]]; then
         echo "Error: Tool directory not found: ${tool_dir}" >&2
         return 1
     fi
 
+    # Check if output directory exists
     if [[ ! -d "${output_dir}" ]]; then
         mkdir -p "${output_dir}" || {
             echo "Error: Could not create output directory: ${output_dir}" >&2
@@ -47,6 +46,7 @@ build_tool() {
         }
     fi
 
+    # Check if tool should be ignored
     if should_ignore_tool "${tool_name}"; then
         echo "Skipping ${tool_name}: Ignored in .buildignore"
         BUILD_RESULTS["${tool_name}"]="SKIPPED"
@@ -54,14 +54,25 @@ build_tool() {
         return 0
     fi
 
+    # Check if latest version is correctly linked
     if [[ ! -L "${tool_latest_dir}" ]] || [[ ! -d "${tool_latest_dir}" ]]; then
         echo "Skipping ${tool_name}: No 'latest' symlink found" >&2
         return 1
     fi
 
+    # Retrieve the latest version and update progress
     local tool_latest_version
     tool_latest_version="$(basename "$(readlink -f "${tool_latest_dir}")")"
     TOOL_VERSIONS["${tool_name}"]="${tool_latest_version}"
+
+    # Check if release already exists
+    if [[ "${GITHUB_ACTIONS}" == "true" ]] && release_exists "${tool_name}" "${tool_latest_version}"; then
+        echo "Skipping ${tool_name} build: Release already exists for ${tool_name} ${tool_latest_version}"
+        BUILD_RESULTS["${tool_name}"]="SKIPPED"
+        ((SKIPPED_BUILDS++))
+        return 0
+    fi
+
     (
         echo "Building ${tool_name} version ${tool_latest_version}"
         cd "${tool_latest_dir}" || return 1

@@ -1,11 +1,7 @@
 #!/bin/bash
-# Set constants
-SCRIPT="${BASH_SOURCE[0]}"
-SCRIPT_NAME="buildctl"
-SCRIPT_DIR="$( cd "$( dirname "${SCRIPT}" )" && pwd )"
-PROJECT_ROOT="$(cd "$(dirname "$(readlink -f "${SCRIPT}")")/../.." && pwd)"
-TOOLS_DIR="$PROJECT_ROOT/tools"
-BUILD_OUTPUT_DIR="$PROJECT_ROOT/build_output"
+# Include constants
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source "${SCRIPT_DIR}/../helper/command_env.sh"
 
 # Function to disable a tool (create .buildignore)
 disable_tool() {
