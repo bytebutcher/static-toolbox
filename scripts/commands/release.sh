@@ -71,7 +71,14 @@ release_tool() {
 # Function to release all tools or a set of given tools
 release_tools() {
     local tools=("$@")
+    local tool_dirs=("$BUILD_OUTPUT_DIR"/*)
     [ $# -eq 0 ] && tools=("${BUILD_OUTPUT_DIR}"/*)
+
+    # Check whether we do have something to release
+    if [ ${#tool_dirs[@]} -eq 0 ] || [ ! -d "${tool_dirs[0]}" ]; then
+        echo "Skipping release: No tools to release"
+        return 0
+    fi
 
     # Ensure we have a GitHub token
     if [ -z "${GITHUB_TOKEN:-}" ]; then
@@ -86,6 +93,11 @@ release_tools() {
     echo "Releasing tools..."
     for tool_dir in "${tools[@]}"; do
         local tool_name=$(basename "${tool_dir}")
+        version_dirs=("$tool_dir"/*)
+        if [ ${#version_dirs[@]} -eq 0 ] || [ ! -d "${version_dirs[0]}" ]; then
+            echo "Skipping release: No versions to release for $tool_name"
+            continue
+        fi
         for version_dir in "${tool_dir}"/*; do
             local version=$(basename "${version_dir}")
             release_tool "${tool_name}" "${version}"
