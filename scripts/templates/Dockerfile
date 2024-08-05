@@ -1,35 +1,27 @@
-# Set the version
-ARG NAME="tool"
-ARG VERSION=0.0.1
+FROM alpine:3.14 AS builder
 
-# Build stage
-FROM alpine:3.18 AS builder
+# Copy the version info file
+ADD versions.env versions.env
 
-# Set build args
-ARG NAME
-ARG VERSION
+# Copy the packages list
+ADD packages.lst /packages.lst
 
-# Add build script
-ADD ./build.sh /build.sh 
+# Add sources (used for caching downloaded files)
+ADD src/ /src
 
-# Set work directory
-WORKDIR /
+# Copy the build script
+ADD build.sh /build.sh
 
-# Install necessary packages
-RUN apk add --no-cache alpine-sdk xz curl
+# Install packages and create lock file
+RUN --mount=type=cache,target=/var/cache/apk apk update && \
+    xargs -a /packages.lst apk add && \
+    apk info -v > "/packages.lock"
 
-# Run build script
-RUN build.sh all $VERSION
+# Run the individual steps of the build script
+RUN /build.sh all
 
 # Create a minimal runtime image
-FROM scratch
-
-# Set build args
-ARG NAME
-ARG VERSION
-
-# Copy the built binary from the builder stage
-COPY --from=builder /output/${NAME}-${VERSION}/${NAME} /${NAME}
-
-# Set entrypoint
-ENTRYPOINT ["/${NAME}"]
+FROM busybox:latest
+COPY --from=builder /packages.lock /packages.lock
+COPY --from=builder /src /src
+COPY --from=builder /output /output

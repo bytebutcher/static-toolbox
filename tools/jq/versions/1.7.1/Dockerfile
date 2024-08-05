@@ -1,42 +1,27 @@
-# Define build argument
-ARG JQ_VERSION=1.7.1
+FROM alpine:3.14 AS builder
 
-# Build stage
-FROM alpine:3.18 AS builder
+# Copy the version info file
+ADD versions.env versions.env
 
-# Use the build argument
-ARG JQ_VERSION
+# Copy the packages list
+ADD packages.lst /packages.lst
 
-# Install necessary build dependencies
-RUN apk add --no-cache \
-    build-base \
-    autoconf \
-    automake \
-    libtool \
-    wget
+# Add sources (used for caching downloaded files)
+ADD src/ /src
 
-# Set work directory
-WORKDIR /opt
+# Copy the build script
+ADD build.sh /build.sh
 
-# Download and extract jq source
-RUN wget https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-${JQ_VERSION}.tar.gz \
-    && tar xzf jq-${JQ_VERSION}.tar.gz
+# Install packages and create lock file
+RUN --mount=type=cache,target=/var/cache/apk apk update && \
+    xargs -a /packages.lst apk add && \
+    apk info -v > "/packages.lock"
 
-# Build jq statically
-RUN cd jq-${JQ_VERSION} \
-    && autoreconf -fi \
-    && ./configure --disable-shared --enable-static --disable-maintainer-mode \
-    && make LDFLAGS=-all-static \
-    && strip jq
+# Run the individual steps of the build script
+RUN /build.sh all
 
 # Create a minimal runtime image
-FROM scratch
-
-# Use the build argument
-ARG JQ_VERSION
-
-# Copy the built 'jq' binary from the builder stage
-COPY --from=builder /opt/jq-${JQ_VERSION}/jq /output/jq
-
-# Set entrypoint
-ENTRYPOINT ["/output/jq"]
+FROM busybox:latest
+COPY --from=builder /packages.lock /packages.lock
+COPY --from=builder /src /src
+COPY --from=builder /output /output

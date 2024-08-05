@@ -1,39 +1,27 @@
-FROM alpine:3.9.2 AS builder
+FROM alpine:3.14 AS builder
 
-# Set the version of tcpdump
-ENV TCPDUMP_VERSION=4.9.2
+# Copy the version info file
+ADD versions.env versions.env
 
-# Install necessary build dependencies
-RUN apk add --no-cache \
-    gcc \
-    g++ \
-    make \
-    automake \
-    libpcap-dev \
-    linux-headers \
-    wget
+# Copy the packages list
+ADD packages.lst /packages.lst
 
-# Set work directory
-WORKDIR /opt
+# Add sources (used for caching downloaded files)
+ADD src/ /src
 
-# Download and extract tcpdump source
-RUN wget http://www.tcpdump.org/release/tcpdump-${TCPDUMP_VERSION}.tar.gz \
-    && tar -xvf tcpdump-${TCPDUMP_VERSION}.tar.gz
+# Copy the build script
+ADD build.sh /build.sh
 
-# Build tcpdump statically
-RUN cd tcpdump-${TCPDUMP_VERSION} \
-    && CFLAGS="-static" LDFLAGS="-static" ./configure --without-crypto \
-    && make LDFLAGS="-static"
+# Install packages and create lock file
+RUN --mount=type=cache,target=/var/cache/apk apk update && \
+    xargs -a /packages.lst apk add && \
+    apk info -v > "/packages.lock"
 
-# Copy the built 'tcpdump' binary to /output
-RUN mkdir -p /output && cp /opt/tcpdump-${TCPDUMP_VERSION}/tcpdump /output/tcpdump
-
-# Strip the binary to reduce size
-RUN strip /output/tcpdump
+# Run the individual steps of the build script
+RUN /build.sh all
 
 # Create a minimal runtime image
-FROM scratch
-COPY --from=builder /output/tcpdump /output/tcpdump
-
-# Set entrypoint
-ENTRYPOINT ["/output/tcpdump"]
+FROM busybox:latest
+COPY --from=builder /packages.lock /packages.lock
+COPY --from=builder /src /src
+COPY --from=builder /output /output

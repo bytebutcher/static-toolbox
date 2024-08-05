@@ -1,0 +1,13 @@
+bison
+build-base
+linux-headers
+autoconf
+automake
+gettext
+gettext-dev
+libtool
+pkgconfig
+xz
+curl
+flex
+git

@@ -17,8 +17,7 @@ mkdir -p $BUILD_DIRECTORY $OUTPUT_DIRECTORY $SOURCE_DIRECTORY
 
 # List of binaries to copy to the output directory after a successful build
 BINARIES=$(cat <<EOF
-/path/to/binary-1
-/path/to/binary-2
+tcpdump-${TCPDUMP_VERSION}/tcpdump
 EOF
 )
 
@@ -56,18 +55,16 @@ copy_binaries() {
 
 # Build
 build_all() {
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START EXAMPLE <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    #local tool_name="tool"
-    #local tool_version="${TOOL_VERSION}" # from versions.env
-    #local file_name=$(download_file "https://example.com/${tool_version}/${tool_name}-${tool_version}.tar.xz")
-    #tar -xJf ${file_name}
-    #(
-    #    cd ${tool_name}-${tool_version}
-    #    CFLAGS="-static" ./configure
-    #    make
-    #)
-    #echo "[+] Finished building "${tool_name}" ${tool_version} for ${ARCH}"
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  END EXAMPLE  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    local tool_name="tcpdump"
+    local tool_version="${TCPDUMP_VERSION}" # from versions.env
+    local file_name=$(download_file "https://www.tcpdump.org/release/tcpdump-${TCPDUMP_VERSION}.tar.gz")
+    tar -xvf ${file_name}
+    (
+        cd tcpdump-${TCPDUMP_VERSION}
+        CFLAGS="-static" LDFLAGS="-static" ./configure --without-crypto
+        make LDFLAGS="-static"
+    )
+    echo "[+] Finished building "${tool_name}" ${tool_version} for ${ARCH}"
 }
 
 # Main execution function

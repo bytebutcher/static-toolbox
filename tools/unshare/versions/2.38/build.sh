@@ -17,8 +17,7 @@ mkdir -p $BUILD_DIRECTORY $OUTPUT_DIRECTORY $SOURCE_DIRECTORY
 
 # List of binaries to copy to the output directory after a successful build
 BINARIES=$(cat <<EOF
-/path/to/binary-1
-/path/to/binary-2
+util-linux-${UNSHARE_VERSION}/unshare
 EOF
 )
 
@@ -56,18 +55,17 @@ copy_binaries() {
 
 # Build
 build_all() {
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START EXAMPLE <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    #local tool_name="tool"
-    #local tool_version="${TOOL_VERSION}" # from versions.env
-    #local file_name=$(download_file "https://example.com/${tool_version}/${tool_name}-${tool_version}.tar.xz")
-    #tar -xJf ${file_name}
-    #(
-    #    cd ${tool_name}-${tool_version}
-    #    CFLAGS="-static" ./configure
-    #    make
-    #)
-    #echo "[+] Finished building "${tool_name}" ${tool_version} for ${ARCH}"
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  END EXAMPLE  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    local tool_name="unshare"
+    local tool_version="${UNSHARE_VERSION}" # from versions.env
+    local file_name=$(download_file "https://mirrors.edge.kernel.org/pub/linux/utils/util-linux/v${UNSHARE_VERSION}/util-linux-${UNSHARE_VERSION}.tar.xz")
+    tar -xf ${file_name}
+    (
+        cd util-linux-${UNSHARE_VERSION}
+        ./autogen.sh
+        CFLAGS="--static" LDFLAGS="--static" ./configure --disable-shared --enable-static
+        make SHARED=0 CC='gcc --static'
+    )
+    echo "[+] Finished building "${tool_name}" ${tool_version} for ${ARCH}"
 }
 
 # Main execution function

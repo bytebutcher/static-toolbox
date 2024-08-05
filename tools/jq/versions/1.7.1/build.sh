@@ -17,8 +17,7 @@ mkdir -p $BUILD_DIRECTORY $OUTPUT_DIRECTORY $SOURCE_DIRECTORY
 
 # List of binaries to copy to the output directory after a successful build
 BINARIES=$(cat <<EOF
-/path/to/binary-1
-/path/to/binary-2
+jq-${JQ_VERSION}/jq
 EOF
 )
 
@@ -56,18 +55,15 @@ copy_binaries() {
 
 # Build
 build_all() {
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>> START EXAMPLE <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    #local tool_name="tool"
-    #local tool_version="${TOOL_VERSION}" # from versions.env
-    #local file_name=$(download_file "https://example.com/${tool_version}/${tool_name}-${tool_version}.tar.xz")
-    #tar -xJf ${file_name}
-    #(
-    #    cd ${tool_name}-${tool_version}
-    #    CFLAGS="-static" ./configure
-    #    make
-    #)
-    #echo "[+] Finished building "${tool_name}" ${tool_version} for ${ARCH}"
-    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  END EXAMPLE  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    local file_name=$(download_file "https://github.com/jqlang/jq/releases/download/jq-${JQ_VERSION}/jq-${JQ_VERSION}.tar.gz")
+    tar xzf "${file_name}"
+    (
+        cd "jq-${JQ_VERSION}"
+        autoreconf -fi
+        ./configure --disable-shared --enable-static --disable-maintainer-mode
+        make LDFLAGS=-all-static
+    )
+    echo "[+] Finished building jq ${JQ_VERSION} for ${ARCH}"
 }
 
 # Main execution function

@@ -1,0 +1,12 @@
+gcc
+make
+automake
+autoconf
+libtool
+gettext
+autopoint
+pkg-config
+libncurses5-dev
+curl
+git
+file

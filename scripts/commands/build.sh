@@ -14,6 +14,7 @@ TOTAL_TOOLS=0
 SUCCESSFUL_BUILDS=0
 FAILED_BUILDS=0
 SKIPPED_BUILDS=0
+WARNED_BUILDS=0
 
 # Function to check if a tool should be ignored
 should_ignore_tool() {
@@ -75,11 +76,11 @@ build_tool() {
 
     (
         echo "Building ${tool_name} version ${tool_latest_version}"
-        cd "${tool_latest_dir}" || return 1
+        cd "${tool_latest_dir}" || exit 1
 
         docker build --progress plain --no-cache -t "${tool_name}:${tool_latest_version}" . || {
             echo "Error: Docker build failed for ${tool_name}" >&2
-            return 1
+            exit 1
         }
 
         local container_id=$(docker create "${tool_name}:${tool_latest_version}")
@@ -88,11 +89,23 @@ build_tool() {
         local tool_output_dir="${output_dir}/${tool_name}/${tool_latest_version}"
         mkdir -p "${tool_output_dir}"
 
-        # Copy all files from the container's /output directory to the host
+        # Copy all files from the container's /output directory to the host's tool output directory
         if ! docker cp "${container_id}:/output/." "${tool_output_dir}/" ; then
             echo "Error: Failed to copy files from container" >&2
             docker rm "${container_id}"
-            return 1
+            exit 1
+        fi
+
+        # Copy packages.lock from the container to the host's tool directory for reference
+        if ! docker cp "${container_id}:/packages.lock" "${tool_latest_dir}/packages.lock" ; then
+            echo "Warning: Failed to copy packages.lock from container" >&2
+            exit 2
+        fi
+
+        # Copy sources from the container to the host's tool source directory for caching
+        if ! docker cp "${container_id}:/src/." "${tool_latest_dir}/src/" ; then
+            echo "Warning: Failed to copy sources from container" >&2
+            exit 2
         fi
 
         docker rm "${container_id}"
@@ -101,10 +114,16 @@ build_tool() {
         echo "Binary located at: ${tool_output_dir}/${tool_name}"
     )
 
+    local exit_code="$?"
+
     # Check return from subshell
-    if [ $? -eq 0 ] ; then
+    if [ "${exit_code}" -eq 0 ] ; then
         BUILD_RESULTS["${tool_name}"]="SUCCESS"
         ((SUCCESSFUL_BUILDS++))
+        return 0
+    elif [ "${exit_code}" -eq 2 ] ; then
+        BUILD_RESULTS["${tool_name}"]="WARNING"
+        ((WARNED_BUILDS++))
         return 0
     else
         return 1
@@ -140,6 +159,7 @@ display_build_summary() {
     echo "----------------------------------------"
     printf "%-20s %-10s %s\n" "Total tools:"       "" "${TOTAL_TOOLS}"
     printf "%-20s %-10s %s\n" "Successful builds:" "" "${SUCCESSFUL_BUILDS}"
+    printf "%-20s %-10s %s\n" "Warned builds:"     "" "${WARNED_BUILDS}"
     printf "%-20s %-10s %s\n" "Failed builds:"     "" "${FAILED_BUILDS}"
     printf "%-20s %-10s %s\n" "Skipped builds:"    "" "${SKIPPED_BUILDS}"
     echo "----------------------------------------"

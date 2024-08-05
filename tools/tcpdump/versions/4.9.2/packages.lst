@@ -1,0 +1,7 @@
+gcc
+g++
+make
+automake
+libpcap-dev
+linux-headers
+curl
